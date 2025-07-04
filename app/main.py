@@ -53,18 +53,28 @@ except Exception as e:
     logger.error(f"Failed to connect to Redis: {e}")
     raise
 
-# Load path from .env or fallback to default
-FIREBASE_SERVICE_ACCOUNT_PATH = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", "app/firebase-service-account.json")
-
-# Initialize Firebase Admin
 try:
-    # Load your service account key
-    cred = credentials.Certificate(FIREBASE_SERVICE_ACCOUNT_PATH)  # Update this path
-    firebase_admin.initialize_app(cred)
-    logger.info("Firebase Admin initialized successfully")
+        # Check if we're in production (Railway) or local development
+        firebase_credentials_json = os.getenv("FIREBASE_CREDENTIALS")
+             
+        if firebase_credentials_json:
+            # Production: Load from environment variable (JSON string)
+            logger.info("Loading Firebase credentials from environment variable")
+            firebase_credentials = json.loads(firebase_credentials_json)
+            cred = credentials.Certificate(firebase_credentials)
+        else:
+            # Local development: Load from file
+            logger.info("Loading Firebase credentials from file")
+            firebase_service_account_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", "app/firebase-service-account.json")
+            cred = credentials.Certificate(firebase_service_account_path)
+        
+        # Initialize Firebase Admin
+        firebase_admin.initialize_app(cred)
+        logger.info("Firebase Admin initialized successfully")
+        
 except Exception as e:
-    logger.error(f"Failed to initialize Firebase Admin: {e}")
-    raise
+        logger.error(f"Failed to initialize Firebase Admin: {e}")
+        raise
 
 # Initialize OpenAI client
 client = OpenAI(api_key=OPENAI_API_KEY)
