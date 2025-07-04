@@ -348,7 +348,10 @@ async def chat(
             logger.info(f"New chat session created: {session_id} for user: {user.uid}")
         
         # Add user message
-        user_message = {"role": "user", "content": req.message}
+        user_message = {"role": "user", 
+                        "content": req.message,
+                        "timestamp": datetime.utcnow().isoformat()
+                        }
         messages.append(user_message)
         
         # Limit conversation history
@@ -368,7 +371,10 @@ async def chat(
         )
         
         reply = response.choices[0].message.content
-        assistant_message = {"role": "assistant", "content": reply}
+        assistant_message = {"role": "assistant", 
+                             "content": reply,
+                             "timestamp": datetime.utcnow().isoformat()
+                             }
         messages.append(assistant_message)
         
         # Save to Redis
