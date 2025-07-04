@@ -56,7 +56,7 @@ except Exception as e:
 try:
         # Check if we're in production (Railway) or local development
         firebase_credentials_json = os.getenv("FIREBASE_CREDENTIALS")
-             
+
         if firebase_credentials_json:
             # Production: Load from environment variable (JSON string)
             logger.info("Loading Firebase credentials from environment variable")
@@ -267,31 +267,6 @@ def verify_firebase_token(authorization: str = Header(None)) -> UserInfo:
     except Exception as e:
         logger.error(f"Token verification failed: {e}")
         raise HTTPException(status_code=401, detail="Invalid or expired token")
-    
-    # TODO: Implement actual Firebase token verification
-    # For now, we'll simulate token verification
-    # In production, use Firebase Admin SDK:
-    """
-    try:
-        import firebase_admin
-        from firebase_admin import auth
-        
-        decoded_token = auth.verify_id_token(token)
-        return UserInfo(
-            uid=decoded_token['uid'],
-            email=decoded_token.get('email'),
-            name=decoded_token.get('name')
-        )
-    except Exception as e:
-        logger.error(f"Token verification failed: {e}")
-        raise HTTPException(status_code=401, detail="Invalid token")
-    """
-    
-    # Placeholder - replace with actual Firebase verification
-    if token == "valid_token":
-        return UserInfo(uid="test_user_123", email="test@example.com", name="Test User")
-    else:
-        raise HTTPException(status_code=401, detail="Invalid token")
 
 # Dependencies
 async def rate_limit_check(request: Request):
@@ -304,6 +279,7 @@ async def rate_limit_check(request: Request):
             status_code=429, 
             detail=f"Rate limit exceeded. Max {RATE_LIMIT_REQUESTS} requests per {RATE_LIMIT_WINDOW} seconds"
         )
+    return None  # Explicitly return None for successful rate limit check
 
 # Routes
 @app.get("/")
