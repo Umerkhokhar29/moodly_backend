@@ -55,13 +55,11 @@ except Exception as e:
 
 # Load path from .env or fallback to default
 FIREBASE_SERVICE_ACCOUNT_PATH = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", "app/firebase-service-account.json")
-# Resolve to absolute path
-abs_path = os.path.abspath(FIREBASE_SERVICE_ACCOUNT_PATH)
 
 # Initialize Firebase Admin
 try:
     # Load your service account key
-    cred = credentials.Certificate(abs_path)  # Update this path
+    cred = credentials.Certificate(FIREBASE_SERVICE_ACCOUNT_PATH)  # Update this path
     firebase_admin.initialize_app(cred)
     logger.info("Firebase Admin initialized successfully")
 except Exception as e:
