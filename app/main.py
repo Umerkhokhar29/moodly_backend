@@ -339,6 +339,16 @@ async def chat(
     """Main chat endpoint with user authentication"""
     session_id = req.session_id or str(uuid.uuid4())
     client_id = get_client_identifier(request)
+        # Check eligibility
+    result_key = f"questionnaire_result:{user.uid}"
+    result_data = redis_client.get(result_key)
+    if not result_data:
+        raise HTTPException(status_code=403, detail="Please complete the questionnaire first")
+
+    result = json.loads(result_data)
+    if not result.get("isValid", False):
+        raise HTTPException(status_code=403, detail="Not eligible for chat access")
+
     
     try:
         # Get existing conversation from Redis
@@ -492,7 +502,29 @@ async def get_session_messages(
     except Exception as e:
         logger.error(f"Error getting session messages: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve session messages")
-
+@app.get("/api/check-eligibility")
+async def check_eligibility(user: UserInfo = Depends(verify_firebase_token)):
+    """Check if user is eligible to access chatbot"""
+    try:
+        result_key = f"questionnaire_result:{user.uid}"
+        result_data = redis_client.get(result_key)
+        
+        if not result_data:
+            return {"eligible": False, "reason": "no_questionnaire"}
+            
+        result = json.loads(result_data)
+        is_eligible = result.get("isValid", False)
+        
+        return {
+            "eligible": is_eligible,
+            "reason": "depression_detected" if not is_eligible else "eligible",
+            "result": result
+        }
+        
+    except Exception as e:
+        logger.error(f"Error checking eligibility: {str(e)}")
+        return {"eligible": False, "reason": "error"}
+    
 @app.get("/api/questionnaire-status/{user_id}")
 async def get_questionnaire_status(user_id: str, current_user: dict = Depends(verify_firebase_token)):
     """Check if user can attempt questionnaire and if they have valid results"""
