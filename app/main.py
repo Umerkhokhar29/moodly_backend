@@ -493,6 +493,87 @@ async def get_session_messages(
         logger.error(f"Error getting session messages: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve session messages")
 
+@app.get("/api/questionnaire-status/{user_id}")
+async def get_questionnaire_status(user_id: str, current_user: dict = Depends(verify_firebase_token)):
+    """Check if user can attempt questionnaire and if they have valid results"""
+    try:
+        # Check for existing result
+        result_key = f"questionnaire_result:{user_id}"
+        stored_result = redis_client.get(result_key)
+        
+        if stored_result:
+            result_data = json.loads(stored_result)
+            return {
+                "hasValidResult": result_data.get("isValid", False),
+                "result": result_data,
+                "canAttempt": False,
+                "timeRemaining": redis_client.ttl(result_key)
+            }
+        
+        return {
+            "hasValidResult": False,
+            "canAttempt": True,
+            "timeRemaining": 0
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/questionnaire/submit")
+async def submit_questionnaire(data: dict, current_user: dict = Depends(verify_firebase_token)):
+    """Submit questionnaire and store result"""
+    try:
+        user_id = data["userId"]
+        scores = data["scores"]
+        severity_results = data["severityResults"]
+        
+        # Calculate if result is valid (allows chatbot access)
+        is_valid = severity_results["depressionLabel"] not in ["Severe", "Moderate", "Extremely Severe"]
+        
+        # Store result in Redis with 24-hour TTL
+        result_data = {
+            "depression": scores["depression"],
+            "anxiety": scores["anxiety"],
+            "stress": scores["stress"],
+            "depressionLabel": severity_results["depressionLabel"],
+            "anxietyLabel": severity_results["anxietyLabel"],
+            "stressLabel": severity_results["stressLabel"],
+            "submittedAt": datetime.now().isoformat(),
+            "isValid": is_valid,
+            "responses": data["responses"]
+        }
+        
+        result_key = f"questionnaire_result:{user_id}"
+        redis_client.setex(result_key, 86400, json.dumps(result_data))  # 24 hours TTL
+        
+        return {"success": True, "result": result_data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/questionnaire/result/{user_id}")
+async def get_questionnaire_result(user_id: str, current_user: dict = Depends(verify_firebase_token)):
+    """Get stored questionnaire result"""
+    try:
+        result_key = f"questionnaire_result:{user_id}"
+        stored_result = redis_client.get(result_key)
+        
+        if stored_result:
+            result_data = json.loads(stored_result)
+            return {"success": True, "result": result_data}
+        
+        return {"success": False, "message": "No result found"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/questionnaire/clear/{user_id}")
+async def clear_questionnaire_result(user_id: str, current_user: dict = Depends(verify_firebase_token)):
+    """Clear questionnaire result for retake"""
+    try:
+        result_key = f"questionnaire_result:{user_id}"
+        redis_client.delete(result_key)
+        return {"success": True, "message": "Result cleared"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/stats")
 async def get_user_stats(user: UserInfo = Depends(verify_firebase_token)):
     """Get statistics for the authenticated user"""
