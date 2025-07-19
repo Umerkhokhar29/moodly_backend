@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import firebase_admin
 from firebase_admin import credentials, auth as firebase_auth
 import redis
-from fastapi import FastAPI, HTTPException, Depends, Request, Header
+from fastapi import FastAPI, HTTPException, Depends, Request, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, validator
@@ -595,7 +595,43 @@ async def get_questionnaire_result(user_id: str, current_user: dict = Depends(ve
         return {"success": False, "message": "No result found"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.post("/api/appointments")
+async def create_appointment(appointment_data: dict):
+    try:
+        appointments_file = "appointments.json"
+        
+        if os.path.exists(appointments_file):
+            with open(appointments_file, 'r') as f:
+                appointments = json.load(f)
+        else:
+            appointments = []
+        
+        appointments.append(appointment_data)
+        
+        with open(appointments_file, 'w') as f:
+            json.dump(appointments, f, indent=2)
+        
+        return {"message": "Appointment saved successfully", "id": appointment_data["id"]}
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error saving appointment: {str(e)}")
 
+@app.get("/api/appointments")
+async def get_appointments(email: str = Query(...)):
+    try:
+        appointments_file = "appointments.json"
+        if os.path.exists(appointments_file):
+            with open(appointments_file, 'r') as f:
+                all_appointments = json.load(f)
+            
+            # Filter by user email
+            user_appointments = [apt for apt in all_appointments if apt.get("patientEmail") == email]
+            return user_appointments
+        return []
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error loading appointments: {str(e)}")
+    
 @app.delete("/api/questionnaire/clear/{user_id}")
 async def clear_questionnaire_result(user_id: str, current_user: dict = Depends(verify_firebase_token)):
     """Clear questionnaire result for retake"""
