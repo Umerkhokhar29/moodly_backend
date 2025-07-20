@@ -21,15 +21,13 @@ This is the backend for **Moodly**, an AI-powered psychotherapist chatbot. Built
 - **FastAPI** – Python web framework
 - **Redis** – In-memory store for session management
 - **Firebase** – Auth system (Google Identity Platform)
-- **OpenAI GPT-3.5 Turbo** – AI chat responses
+- **OpenAI Fine-Tuned GPT-3.5 Turbo** – AI chat responses
 - **Uvicorn** – ASGI server
 - **Python-dotenv** – Load `.env` securely
 
 ---
 
 ## 🔌 Environment Variables
-
-Create a `.env` file in the root directory with the following keys:
 
 ```env
 OPENAI_API_KEY=your-openai-api-key
